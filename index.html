@@ -1915,11 +1915,11 @@
    ============================================================ */
 const RARITIES = {
   grey:   { name:'灰', weight:0,  statMult:0.4, statCount:1 },
-  white:  { name:'白', weight:50, statMult:0.7, statCount:1 },
+  white:  { name:'白', weight:60, statMult:0.7, statCount:1 },
   green:  { name:'綠', weight:25, statMult:1.0, statCount:2 },
-  blue:   { name:'藍', weight:13, statMult:1.5, statCount:3 },
-  purple: { name:'紫', weight:8,  statMult:2.2, statCount:4 },
-  orange: { name:'橙', weight:4,  statMult:3.5, statCount:5 },
+  blue:   { name:'藍', weight:10, statMult:1.5, statCount:3 },
+  purple: { name:'紫', weight:3,  statMult:2.2, statCount:4 },
+  orange: { name:'橙', weight:1.5,statMult:3.5, statCount:5 },
 };
 const RARITY_ORDER = ['grey','white','green','blue','purple','orange'];
 const RARITY_COLORS = {grey:'#7a7269',white:'#e0d8c8',green:'#5a9a4a',blue:'#4080d0',purple:'#a060d0',orange:'#ff8838'};
@@ -2710,6 +2710,33 @@ const BIOMES = [
     ],
     deco:'cosmic',
   },
+  { name:'無盡深淵', minDist:36000,
+    sky:['#100214','#040006'], ground:['#0e0418','#04000a'],
+    monsters:[
+      { name:'深淵爬行者',art:'🦂',size:42,hp:6000,dmg:280,xp:2800,gold:1400,speed:95 },
+      { name:'虛無使者',art:'👻',size:46,hp:9000,dmg:360,xp:4000,gold:2000,speed:110 },
+      { name:'墮神化身',art:'🔮',size:54,hp:14000,dmg:480,xp:6500,gold:3200,speed:75 },
+    ],
+    deco:'void',
+  },
+  { name:'混沌彼岸', minDist:50000,
+    sky:['#1a0214','#080006'], ground:['#180428','#08000c'],
+    monsters:[
+      { name:'噬星巨獸',art:'🦖',size:56,hp:20000,dmg:650,xp:9000,gold:4500,speed:80 },
+      { name:'時空殘片',art:'💎',size:48,hp:28000,dmg:780,xp:13000,gold:6500,speed:120 },
+      { name:'根源吞噬者',art:'🌀',size:62,hp:42000,dmg:1100,xp:20000,gold:10000,speed:70 },
+    ],
+    deco:'cosmic',
+  },
+  { name:'永恆虛無', minDist:70000,
+    sky:['#000010','#000004'], ground:['#100018','#040004'],
+    monsters:[
+      { name:'宇宙之心',art:'💫',size:60,hp:60000,dmg:1500,xp:30000,gold:15000,speed:95 },
+      { name:'創世碎片',art:'⚡',size:55,hp:80000,dmg:2000,xp:45000,gold:22000,speed:130 },
+      { name:'絕對虛無',art:'⚫',size:70,hp:120000,dmg:3000,xp:70000,gold:35000,speed:80 },
+    ],
+    deco:'void',
+  },
 ];
 
 const VILLAGES = [
@@ -3068,7 +3095,7 @@ function getDerived(){
     critChance: Math.min(0.85, 0.05 + s.dex*0.01 + (mods.critBonus||0)),
     critDmg: 1.5 + s.dex*0.02 + (mods.critDmgBonus||0),
     dodge: Math.min(0.6, s.dex*0.005 + (mods.dodgeBonus||0)),
-    dropRate: Math.min(0.98, 0.15 + s.lck*0.005 + luckBuff*0.01 + (mods.dropBonus||0)),
+    dropRate: Math.min(0.85, 0.10 + s.lck*0.005 + luckBuff*0.01 + (mods.dropBonus||0)),
     luckRarity: s.lck + (p.buffs.luck?10:0),
     armorReduce: ((s.armor + s.def*2)*(mods.armorMult||1))/(((s.armor + s.def*2)*(mods.armorMult||1))+100),
     moveSpeed: (200 + s.dex*1.5) * (mods.speedMult||1),
