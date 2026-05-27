@@ -1522,15 +1522,29 @@
   body.touch-mode .death-modal,
   body.touch-mode .ending-modal,
   body.touch-mode .start-menu-modal{
-    max-width:90vw;padding:28px 20px;
+    max-width:94vw;
+    max-height:94vh;
+    overflow-y:auto;
+    padding:20px 16px;
+    -webkit-overflow-scrolling:touch;
   }
-  body.touch-mode .death-title{font-size:42px;}
-  body.touch-mode .ending-title{font-size:30px;}
+  body.touch-mode .ending-overlay{
+    align-items:flex-start;
+    padding:2vh 0;
+    overflow-y:auto;
+  }
+  body.touch-mode .death-title{font-size:36px;}
+  body.touch-mode .ending-title{font-size:24px;margin-bottom:18px;letter-spacing:0.15em;}
+  body.touch-mode .ending-text{font-size:13px;line-height:1.8;margin-bottom:16px;}
+  body.touch-mode .ending-stats{padding:12px 16px;font-size:11px;margin-bottom:14px;line-height:1.7;}
+  body.touch-mode .ng-preview{font-size:10px;margin-bottom:14px;padding:6px 10px;}
   body.touch-mode .start-title{font-size:32px;}
   body.touch-mode .start-btn,
   body.touch-mode .death-btn,
   body.touch-mode .ending-btn{
-    padding:16px;font-size:14px;
+    padding:14px 28px;font-size:14px;
+    width:100%;
+    box-sizing:border-box;
   }
 
   /* 職業選擇 - 手機橫向時三欄變單行可滑 */
@@ -1917,9 +1931,9 @@ const RARITIES = {
   grey:   { name:'灰', weight:0,  statMult:0.4, statCount:1 },
   white:  { name:'白', weight:60, statMult:0.7, statCount:1 },
   green:  { name:'綠', weight:25, statMult:1.0, statCount:2 },
-  blue:   { name:'藍', weight:10, statMult:1.5, statCount:3 },
+  blue:   { name:'藍', weight:11, statMult:1.5, statCount:3 },
   purple: { name:'紫', weight:3,  statMult:2.2, statCount:4 },
-  orange: { name:'橙', weight:1.5,statMult:3.5, statCount:5 },
+  orange: { name:'橙', weight:1,  statMult:3.5, statCount:5 },
 };
 const RARITY_ORDER = ['grey','white','green','blue','purple','orange'];
 const RARITY_COLORS = {grey:'#7a7269',white:'#e0d8c8',green:'#5a9a4a',blue:'#4080d0',purple:'#a060d0',orange:'#ff8838'};
