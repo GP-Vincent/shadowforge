@@ -18,7 +18,14 @@
     --green:#5a9a4a; --blue:#4080d0; --purple:#a060d0; --orange:#ff8838;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  html,body{height:100%;overflow:hidden;}
+  html,body{
+    height:100%;
+    height:100dvh;  /* dynamic viewport - 排除手機網址列等 */
+    overflow:hidden;
+    position:fixed;  /* 防止 iOS 橡皮筋滾動造成抖動 */
+    inset:0;
+    width:100%;
+  }
   body{
     font-family:'Noto Serif TC',serif;
     background:var(--bg-0);
@@ -31,7 +38,10 @@
     opacity:0.4;mix-blend-mode:overlay;
   }
   #app{
-    position:relative;height:100vh;
+    position:relative;
+    height:100vh;
+    height:100dvh;  /* 動態 viewport */
+    width:100%;
     display:grid;
     grid-template-columns: 240px 1fr 280px;
     grid-template-rows: 52px 1fr 84px;
@@ -39,7 +49,13 @@
       "header header header"
       "left main right"
       "left bottom right";
-    gap:6px;padding:6px;
+    gap:6px;
+    padding:6px;
+    /* 處理瀏海/動態島 (iOS) */
+    padding-top:max(6px, env(safe-area-inset-top));
+    padding-left:max(6px, env(safe-area-inset-left));
+    padding-right:max(6px, env(safe-area-inset-right));
+    padding-bottom:max(6px, env(safe-area-inset-bottom));
   }
 
   /* HEADER */
@@ -1168,7 +1184,12 @@
       "header header header"
       "main main main"
       "main main main";
-    gap:2px;padding:2px;
+    gap:2px;
+    padding:2px;
+    padding-top:max(2px, env(safe-area-inset-top));
+    padding-left:max(2px, env(safe-area-inset-left));
+    padding-right:max(2px, env(safe-area-inset-right));
+    padding-bottom:max(2px, env(safe-area-inset-bottom));
   }
   body.touch-mode.compact .left,
   body.touch-mode.compact .right,
@@ -2594,6 +2615,15 @@ function resizeCanvas(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
 }
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', ()=>{
+  // 等動畫過去再 resize（iOS 旋轉動畫約 300ms）
+  setTimeout(resizeCanvas, 100);
+  setTimeout(resizeCanvas, 400);
+});
+// 監聽 visual viewport（手機網址列出現/消失時觸發）
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', resizeCanvas);
+}
 
 function getGroundY(){
   return canvas.clientHeight * GROUND_Y_RATIO;
@@ -5737,6 +5767,11 @@ function enableTouchMode(){
   if(window.innerWidth < 1100){
     document.body.classList.add('compact');
   }
+  // 嘗試隱藏手機網址列
+  setTimeout(()=>{
+    window.scrollTo(0, 1);
+    setTimeout(()=>{ window.scrollTo(0, 0); resizeCanvas(); }, 50);
+  }, 100);
 }
 
 // 啟動偵測
