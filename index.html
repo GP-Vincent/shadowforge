@@ -985,6 +985,16 @@
     transition:all 0.2s;
   }
   .ending-btn:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(224,168,80,0.4);}
+  .ng-preview{
+    color:var(--ember);font-size:11px;
+    margin-bottom:20px;
+    padding:8px 14px;
+    background:rgba(168,32,26,0.15);
+    border:1px solid rgba(217,122,44,0.4);
+    border-radius:3px;
+    letter-spacing:0.05em;
+    font-family:'JetBrains Mono',monospace;
+  }
 
   /* ============ BANKER ============ */
   .banker-panel{padding:8px;}
@@ -2178,6 +2188,357 @@ const SKILL_DEFS = {
       game.cameraShake = 8;
     },
   },
+
+  // === 新增主動技能 (9-30) ===
+  fireball: {
+    name:'火球術', icon:'🔥', kind:'active',
+    rarity:'white', cost:15, cooldown:1.5,
+    desc:'發射高速火球',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.magic*2.5 + d.atk*0.3;
+      game.projectiles.push({
+        worldX:p.worldX+p.facing*20, y:p.y-30,
+        vx:p.facing*700, vy:0,
+        dmg:Math.floor(dmg), life:1.5, size:8, color:'#ff6020', friendly:true,
+      });
+      spawnEffect(p.worldX+p.facing*25, p.y-30, 'muzzle',{life:0.2,maxLife:0.2});
+    },
+  },
+  poisonCloud: {
+    name:'毒雲術', icon:'☠️', kind:'active',
+    rarity:'green', cost:25, cooldown:5.0,
+    desc:'前方產生毒雲，持續造成傷害',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const tx = p.worldX + p.facing*150;
+      const ty = p.y - 30;
+      const dmg = d.magic*1.5 + d.atk*0.4;
+      // 3 段傷害
+      for(let i=0;i<3;i++){
+        setTimeout(()=>{
+          game.monsters.forEach(m=>{
+            if(m.dead) return;
+            if(Math.hypot(m.worldX-tx, m.y-ty) < 130) dealDamage(m, dmg, 'magic');
+          });
+          spawnEffect(tx, ty, 'explosion',{radius:130, life:0.5, maxLife:0.5});
+        }, i*600);
+      }
+    },
+  },
+  shockwave: {
+    name:'震地波', icon:'💥', kind:'active',
+    rarity:'green', cost:28, cooldown:4.0,
+    desc:'震動地面，擊飛所有周圍敵人',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*2.5 + d.magic*0.5;
+      game.monsters.forEach(m=>{
+        if(m.dead) return;
+        if(Math.abs(m.worldX-p.worldX) < 250 && Math.abs(m.y-p.y) < 100){
+          dealDamage(m, dmg);
+          m.vx = (m.worldX > p.worldX ? 1 : -1) * 400;
+          m.vy = -300;
+          m.knockbackT = 0.4;
+          m.onGround = false;
+        }
+      });
+      spawnEffect(p.worldX, p.y, 'explosion',{radius:250, life:0.5, maxLife:0.5});
+      game.cameraShake = 16;
+    },
+  },
+  bloodlust: {
+    name:'嗜血', icon:'🩸', kind:'active',
+    rarity:'green', cost:20, cooldown:15.0,
+    desc:'10 秒內攻擊吸血 30%',
+    effect(){
+      game.player.buffs.bloodlust = 10;
+      spawnEffect(game.player.worldX, game.player.y-30, 'heal',{life:0.5,maxLife:0.5});
+      logMsg('嗜血狀態！10秒','skill');
+    },
+  },
+  rage: {
+    name:'狂怒', icon:'😤', kind:'active',
+    rarity:'green', cost:25, cooldown:20.0,
+    desc:'8 秒內攻擊力 +60%',
+    effect(){
+      game.player.buffs.rage = 8;
+      logMsg('狂怒狀態！攻擊+60%','skill');
+    },
+  },
+  shield: {
+    name:'神聖護盾', icon:'🛡️', kind:'active',
+    rarity:'blue', cost:30, cooldown:18.0,
+    desc:'5 秒內無敵',
+    effect(){
+      game.player.invincible = 5;
+      spawnEffect(game.player.worldX, game.player.y-30, 'heal',{life:0.8,maxLife:0.8});
+      logMsg('護盾！5秒無敵','skill');
+    },
+  },
+  bladeStorm: {
+    name:'劍刃風暴', icon:'⚔️', kind:'active',
+    rarity:'blue', cost:35, cooldown:6.0,
+    desc:'圍繞 8 道劍刃旋轉攻擊',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*1.5;
+      for(let i=0;i<8;i++){
+        setTimeout(()=>{
+          const r = 150;
+          game.monsters.forEach(m=>{
+            if(m.dead) return;
+            if(Math.hypot(m.worldX-p.worldX, m.y-p.y) < r + m.size*0.5) dealDamage(m, dmg);
+          });
+          spawnEffect(p.worldX, p.y-30, 'spin',{radius:r, life:0.3, maxLife:0.3});
+        }, i*100);
+      }
+    },
+  },
+  multishot: {
+    name:'多重射擊', icon:'🏹', kind:'active',
+    rarity:'blue', cost:25, cooldown:4.0,
+    desc:'同時射出 5 支箭',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*1.2;
+      for(let i=-2;i<=2;i++){
+        game.projectiles.push({
+          worldX:p.worldX+p.facing*20, y:p.y-30,
+          vx:p.facing*700, vy:i*60,
+          dmg:Math.floor(dmg), life:1.2, size:6, color:'#e8dcc4', friendly:true,
+        });
+      }
+      spawnEffect(p.worldX+p.facing*25, p.y-30, 'muzzle',{life:0.2,maxLife:0.2});
+    },
+  },
+  blink: {
+    name:'瞬步', icon:'✨', kind:'active',
+    rarity:'blue', cost:20, cooldown:5.0,
+    desc:'瞬移 300 距離並無敵',
+    effect(){
+      const p = game.player;
+      p.worldX += p.facing*300;
+      p.invincible = 0.8;
+      spawnEffect(p.worldX, p.y-30, 'dash',{life:0.4,maxLife:0.4});
+    },
+  },
+  poisonBlade: {
+    name:'毒刃投擲', icon:'🗡️', kind:'active',
+    rarity:'blue', cost:22, cooldown:3.5,
+    desc:'投擲毒刃造成傷害並減速',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*2.5;
+      game.projectiles.push({
+        worldX:p.worldX+p.facing*20, y:p.y-30,
+        vx:p.facing*800, vy:0,
+        dmg:Math.floor(dmg), life:1.5, size:7, color:'#7050a0', friendly:true,
+        slowTarget:true,
+      });
+    },
+  },
+  earthquake: {
+    name:'地震', icon:'🌋', kind:'active',
+    rarity:'purple', cost:45, cooldown:10.0,
+    desc:'全螢幕傷害 + 擊倒',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*3.0 + d.magic*1.5;
+      game.monsters.forEach(m=>{
+        if(m.dead) return;
+        if(Math.abs(m.worldX-p.worldX) < canvas.clientWidth){
+          dealDamage(m, dmg);
+          m.knockbackT = 0.5;
+          m.vy = -200;
+          m.onGround = false;
+        }
+      });
+      game.cameraShake = 25;
+      spawnEffect(p.worldX, p.y, 'explosion',{radius:canvas.clientWidth*0.5, life:0.8, maxLife:0.8});
+    },
+  },
+  divine_judgment: {
+    name:'神聖審判', icon:'⚖️', kind:'active',
+    rarity:'purple', cost:50, cooldown:8.0,
+    desc:'最近 3 個敵人遭天罰',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.magic*5 + d.atk*2;
+      const targets = game.monsters
+        .filter(m=>!m.dead)
+        .sort((a,b)=>Math.hypot(a.worldX-p.worldX,a.y-p.y)-Math.hypot(b.worldX-p.worldX,b.y-p.y))
+        .slice(0,3);
+      targets.forEach((m,i)=>{
+        setTimeout(()=>{
+          dealDamage(m, dmg, 'magic');
+          spawnEffect(m.worldX, m.y-30, 'explosion',{radius:60, life:0.5, maxLife:0.5});
+        }, i*200);
+      });
+      game.cameraShake = 12;
+    },
+  },
+  time_stop: {
+    name:'時間停止', icon:'⏸️', kind:'active',
+    rarity:'purple', cost:60, cooldown:25.0,
+    desc:'4 秒內全敵人凍結',
+    effect(){
+      game.monsters.forEach(m=>{
+        if(!m.dead) m.slowT = 4;
+      });
+      logMsg('時間停止！','skill');
+      spawnEffect(game.player.worldX, game.player.y-30, 'heal',{life:0.5,maxLife:0.5});
+    },
+  },
+  vampiric_aura: {
+    name:'吸血光環', icon:'🦇', kind:'active',
+    rarity:'purple', cost:40, cooldown:15.0,
+    desc:'12 秒內吸血 60% + 攻擊加倍',
+    effect(){
+      game.player.buffs.vampire = 12;
+      game.player.buffs.rage = 12;
+      logMsg('吸血光環！','skill');
+    },
+  },
+  spear_rain: {
+    name:'神槍雨', icon:'🔱', kind:'active',
+    rarity:'purple', cost:48, cooldown:7.0,
+    desc:'天降神槍打擊大範圍',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*1.8 + d.magic*1.2;
+      const baseX = p.worldX + p.facing*100;
+      for(let i=0;i<15;i++){
+        setTimeout(()=>{
+          const tx = baseX + rand(-300, 300);
+          const ty = p.y - 30;
+          spawnEffect(tx, ty-200, 'meteor_warn',{life:0.2, maxLife:0.2});
+          setTimeout(()=>{
+            game.monsters.forEach(m=>{
+              if(m.dead) return;
+              if(Math.abs(m.worldX-tx)<50 && Math.abs(m.y-ty)<80) dealDamage(m, dmg);
+            });
+            spawnEffect(tx, ty, 'explosion',{radius:60, life:0.3, maxLife:0.3});
+          }, 200);
+        }, i*80);
+      }
+      game.cameraShake = 14;
+    },
+  },
+  death_mark: {
+    name:'死亡印記', icon:'💀', kind:'active',
+    rarity:'orange', cost:60, cooldown:15.0,
+    desc:'標記敵人 5 秒後爆炸 (大傷害)',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*8 + d.magic*8;
+      const targets = game.monsters
+        .filter(m=>!m.dead && Math.abs(m.worldX-p.worldX)<500)
+        .slice(0,5);
+      targets.forEach(m=>{
+        m.deathMarkT = 5;
+        const markX = m.worldX, markY = m.y;
+        setTimeout(()=>{
+          if(m.dead) return;
+          dealDamage(m, dmg, 'magic');
+          // 範圍爆炸
+          game.monsters.forEach(other=>{
+            if(other.dead || other===m) return;
+            if(Math.hypot(other.worldX-markX, other.y-markY) < 120) dealDamage(other, dmg*0.5);
+          });
+          spawnEffect(markX, markY, 'explosion',{radius:120, life:0.6, maxLife:0.6});
+        }, 5000);
+      });
+      logMsg(`標記 ${targets.length} 個敵人`,'skill');
+    },
+  },
+  meteor_storm: {
+    name:'流星風暴', icon:'☄️', kind:'active',
+    rarity:'orange', cost:80, cooldown:18.0,
+    desc:'10 顆隕石連續轟炸',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.magic*5 + d.atk*2;
+      for(let i=0;i<10;i++){
+        setTimeout(()=>{
+          const tx = p.worldX + rand(-400, 400);
+          const ty = p.y - 30;
+          spawnEffect(tx, ty, 'meteor_warn',{life:0.4, maxLife:0.4});
+          setTimeout(()=>{
+            game.monsters.forEach(m=>{
+              if(m.dead) return;
+              if(Math.hypot(m.worldX-tx, m.y-ty) < 110) dealDamage(m, dmg, 'magic');
+            });
+            spawnEffect(tx, ty, 'explosion',{radius:110, life:0.5, maxLife:0.5});
+            game.cameraShake = 12;
+          }, 400);
+        }, i*180);
+      }
+    },
+  },
+  apocalypse: {
+    name:'末日審判', icon:'🌅', kind:'active',
+    rarity:'orange', cost:100, cooldown:30.0,
+    desc:'清空畫面所有敵人 50% 血',
+    effect(){
+      const p = game.player; const d = getDerived();
+      game.monsters.forEach(m=>{
+        if(m.dead) return;
+        if(Math.abs(m.worldX-p.worldX) < canvas.clientWidth){
+          dealDamage(m, m.hp*0.5, 'magic');
+          spawnEffect(m.worldX, m.y, 'explosion',{radius:80, life:0.6, maxLife:0.6});
+        }
+      });
+      game.cameraShake = 30;
+      logMsg('★ 末日審判 ★','crit');
+    },
+  },
+  cosmic_blast: {
+    name:'宇宙轟擊', icon:'🌌', kind:'active',
+    rarity:'orange', cost:75, cooldown:12.0,
+    desc:'發射巨型宇宙能量光束',
+    effect(){
+      const p = game.player; const d = getDerived();
+      const dmg = d.atk*4 + d.magic*4;
+      const len = 800;
+      game.monsters.forEach(m=>{
+        if(m.dead) return;
+        const dx = m.worldX - p.worldX;
+        if(p.facing*dx > 0 && Math.abs(dx) < len && Math.abs(m.y-p.y)<100){
+          dealDamage(m, dmg, 'magic');
+          m.knockbackT = 0.3;
+          m.vx = p.facing*200;
+        }
+      });
+      spawnEffect(p.worldX + p.facing*len*0.5, p.y-30, 'pierce',{dir:p.facing, len:len, life:0.5, maxLife:0.5});
+      game.cameraShake = 18;
+    },
+  },
+  summon_phantom: {
+    name:'幻影分身', icon:'👥', kind:'active',
+    rarity:'purple', cost:35, cooldown:20.0,
+    desc:'10 秒內每秒對最近敵人傷害',
+    effect(){
+      game.player.buffs.phantom = 10;
+      logMsg('幻影分身！','skill');
+    },
+  },
+  holy_light: {
+    name:'聖光術', icon:'☀️', kind:'active',
+    rarity:'blue', cost:35, cooldown:10.0,
+    desc:'回滿生命，並對附近敵人造成神聖傷害',
+    effect(){
+      const p = game.player; const d = getDerived();
+      p.hp = d.hpMax;
+      const dmg = d.magic*4;
+      game.monsters.forEach(m=>{
+        if(m.dead) return;
+        if(Math.abs(m.worldX-p.worldX)<200) dealDamage(m, dmg, 'magic');
+      });
+      spawnEffect(p.worldX, p.y-30, 'heal',{life:0.8,maxLife:0.8});
+      game.damageTexts.push({worldX:p.worldX,y:p.y-60,text:'回滿',color:'#fff8a0',size:20,life:1.2,vy:-30});
+    },
+  },
   // === 被動技能 (passive) ===
   pas_dmg: {
     name:'狂戰之心', icon:'🔥', kind:'passive',
@@ -2520,6 +2881,7 @@ const game = {
     bank:0,             // 銀行存款
     petId:null,         // 當前寵物 (PETS 的 id)
     ownedPets:[],       // 已擁有的寵物 ids
+    ngLevel:0,          // NG+ 等級 (通關次數)
   },
   equipment:{ weapon:null, helm:null, shoulder:null, chest:null, legs:null, gloves:null, ring:null, boots:null },
   inventory:[],
@@ -2683,6 +3045,10 @@ function getDerived(){
     if(pet.dropBonus) mods.dropBonus = (mods.dropBonus||0) + pet.dropBonus;
     if(pet.regen) mods.regen = (mods.regen||0) + pet.regen;
   }
+  // 技能 buff
+  if(p.buffs.rage) mods.atkMult = (mods.atkMult||1) * 1.6;
+  if(p.buffs.bloodlust) mods.lifesteal = (mods.lifesteal||0) + 0.3;
+  if(p.buffs.vampire) mods.lifesteal = (mods.lifesteal||0) + 0.6;
   const luckBuff = p.buffs.luck ? 50 : 0;
   const baseHpMax = (100 + s.vit*15 + p.lv*10) * (mods.hpMaxMult||1);
   const baseMpMax = (50 + s.int*8 + p.lv*5) * (mods.mpMaxMult||1);
@@ -2695,7 +3061,7 @@ function getDerived(){
     critChance: Math.min(0.85, 0.05 + s.dex*0.01 + (mods.critBonus||0)),
     critDmg: 1.5 + s.dex*0.02 + (mods.critDmgBonus||0),
     dodge: Math.min(0.6, s.dex*0.005 + (mods.dodgeBonus||0)),
-    dropRate: Math.min(0.98, 0.55 + s.lck*0.02 + luckBuff*0.01 + (mods.dropBonus||0)),
+    dropRate: Math.min(0.98, 0.15 + s.lck*0.015 + luckBuff*0.01 + (mods.dropBonus||0)),
     luckRarity: s.lck + (p.buffs.luck?10:0),
     armorReduce: ((s.armor + s.def*2)*(mods.armorMult||1))/(((s.armor + s.def*2)*(mods.armorMult||1))+100),
     moveSpeed: (200 + s.dex*1.5) * (mods.speedMult||1),
@@ -3145,6 +3511,7 @@ function selectJob(jobId){
   p.bank = 0;
   p.petId = null;
   p.ownedPets = [];
+  p.ngLevel = 0;
   p.buffs = {};
   game.equipment = {weapon:null,helm:null,shoulder:null,chest:null,legs:null,gloves:null,ring:null,boots:null};
   game.inventory = [];
@@ -3276,7 +3643,13 @@ function showTreasureChoiceModal(){
   `;
   document.body.appendChild(overlay);
   overlay.querySelectorAll('.treasure-card').forEach(card=>{
-    card.addEventListener('click',()=>chooseTreasure(parseInt(card.dataset.idx)));
+    const handler = (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      chooseTreasure(parseInt(card.dataset.idx));
+    };
+    card.addEventListener('click', handler);
+    card.addEventListener('touchstart', handler, {passive:false});
   });
 }
 
@@ -3453,10 +3826,16 @@ function ensureBossesGenerated(){
 
 function spawnBoss(bdef){
   const groundY = getGroundY();
+  const ngMul = 1 + game.player.ngLevel*1.0; // Boss NG+ 翻倍
+  const hp = Math.floor(bdef.hp * ngMul);
+  const dmg = Math.floor(bdef.dmg * (1 + game.player.ngLevel*0.6));
+  const xp = Math.floor(bdef.xp * (1 + game.player.ngLevel*0.5));
+  const gold = Math.floor(bdef.gold * (1 + game.player.ngLevel*0.5));
   game.monsters.push({
     isBoss:true, bossDef:bdef,
-    name:bdef.name, art:bdef.art, size:bdef.size, color:bdef.color,
-    hp:bdef.hp, hpMax:bdef.hp, dmg:bdef.dmg, xp:bdef.xp, gold:bdef.gold, speed:bdef.speed,
+    name:bdef.name + (game.player.ngLevel>0?` [NG+${game.player.ngLevel}]`:''),
+    art:bdef.art, size:bdef.size, color:bdef.color,
+    hp:hp, hpMax:hp, dmg:dmg, xp:xp, gold:gold, speed:bdef.speed,
     worldX:bdef.worldX, y:groundY,
     vx:0, vy:0,
     facing:-1,
@@ -3571,8 +3950,9 @@ function spawnMonsterNearPlayer(){
   const side = Math.random()<0.5 ? -1 : 1;
   const dist = rand(canvas.clientWidth*0.4, canvas.clientWidth*0.6);
   const worldX = game.player.worldX + side*dist;
-  const hpMul = 1 + lv*0.12;
-  const dmgMul = 1 + lv*0.10;
+  const ngMul = 1 + game.player.ngLevel*0.8; // NG+1 = 1.8x, NG+2 = 2.6x...
+  const hpMul = (1 + lv*0.12) * ngMul;
+  const dmgMul = (1 + lv*0.10) * (1 + game.player.ngLevel*0.5);
   // 5% 機率變精英怪
   const isElite = Math.random() < 0.05;
   const eliteHp = isElite ? 3 : 1;
@@ -3956,6 +4336,17 @@ function updatePlayer(dt){
       const regen = 1 + Math.floor(d.hpMax*d.regen);
       p.hp=Math.min(d.hpMax,p.hp+regen);
       updateUI();
+    }
+    // 幻影分身 buff - 每秒對最近敵人造成傷害
+    if(p.buffs.phantom){
+      const targets = game.monsters
+        .filter(m=>!m.dead && Math.abs(m.worldX-p.worldX)<400)
+        .slice(0, 3);
+      const dmg = d.atk*1.5 + d.magic*1.5;
+      targets.forEach(m=>{
+        dealDamage(m, dmg);
+        spawnEffect(m.worldX, m.y-30, 'slash',{dir:1, range:60, life:0.2, maxLife:0.2});
+      });
     }
   }
 
@@ -5407,6 +5798,7 @@ function renderRelicPanel(){
 function showEnding(){
   game.endingShown = true;
   const p = game.player;
+  const nextNG = (p.ngLevel||0) + 1;
   const overlay = document.createElement('div');
   overlay.id = 'endingOverlay';
   overlay.className = 'ending-overlay';
@@ -5414,29 +5806,37 @@ function showEnding(){
     <div class="ending-modal">
       <div class="ending-title">★ 暗影獵寶 · 結局 ★</div>
       <div class="ending-text">
-        <p>六件神器在你手中閃耀。</p>
-        <p>星辰主宰倒下，創世之石歸位。</p>
-        <p>輪迴的鎖鏈終於斷裂，獵人達成傳奇。</p>
+        <p>${p.ngLevel ? `第 ${p.ngLevel+1} 次擊敗創世神。` : '六件神器在你手中閃耀。'}</p>
+        <p>${p.ngLevel ? '輪迴更深、力量更強，獵人仍在前行。' : '星辰主宰倒下，創世之石歸位。'}</p>
+        <p>${p.ngLevel ? '更深的試煉在前方等待…' : '輪迴的鎖鏈終於斷裂，獵人達成傳奇。'}</p>
       </div>
       <div class="ending-stats">
+        <div>當前難度：${p.ngLevel ? `NG+${p.ngLevel}` : '一般'}</div>
         <div>職業：${JOBS[p.job]?JOBS[p.job].name:''}</div>
         <div>等級：Lv. ${p.lv}</div>
         <div>擊殺數：${p.kills}</div>
         <div>輪迴次數：${p.deaths}</div>
         <div>累積金幣：${p.gold + p.bank}</div>
       </div>
-      <button class="ending-btn" id="endingNG">+ 開啟新輪迴 (NG+)</button>
+      <div class="ng-preview">
+        下一輪 NG+${nextNG} 預覽：怪物 ×${(1+nextNG*0.8).toFixed(1)} 血量 · Boss ×${(1+nextNG).toFixed(1)} 血量 · 掉率/經驗 ×${(1+nextNG*0.5).toFixed(1)}
+      </div>
+      <button class="ending-btn" id="endingNG">+ 開啟 NG+${nextNG}</button>
     </div>
   `;
   document.body.appendChild(overlay);
-  document.getElementById('endingNG').addEventListener('click',restartAfterEnding);
+  const handler = (e)=>{ e && e.preventDefault(); restartAfterEnding(); };
+  document.getElementById('endingNG').addEventListener('click', handler);
+  document.getElementById('endingNG').addEventListener('touchstart', handler, {passive:false});
 }
 
 function restartAfterEnding(){
   const overlay = document.getElementById('endingOverlay');
   if(overlay) overlay.remove();
   game.endingShown = false;
-  // NG+ 模式：清除 Boss 擊敗記錄但保留神器
+  // NG+ 升級
+  game.player.ngLevel = (game.player.ngLevel||0) + 1;
+  // 清除 Boss 擊敗記錄但保留神器
   game.player.bossesKilled = {};
   game.generatedBosses = new Set();
   // 回起點
@@ -5445,7 +5845,8 @@ function restartAfterEnding(){
   game.player.y = getGroundY();
   game.monsters = [];
   game.treasureBoxes = [];
-  logMsg('★ 新輪迴開始！Boss 已重生，神器永久保留 ★','crit');
+  logMsg(`★ NG+${game.player.ngLevel} 開始！怪物 ×${(1+game.player.ngLevel*0.8).toFixed(1)}, Boss ×${(1+game.player.ngLevel).toFixed(1)} ★`,'crit');
+  saveGame();
 }
 
 function renderSkillPanel(){
@@ -6421,6 +6822,7 @@ function saveGame(){
         bank:p.bank,
         petId:p.petId||null,
         ownedPets:(p.ownedPets||[]).slice(),
+        ngLevel:p.ngLevel||0,
       },
       equipment: Object.assign({}, game.equipment),
       inventory: game.inventory.slice(),
@@ -6452,6 +6854,7 @@ function loadGame(){
     if(!game.player.activeSlots) game.player.activeSlots = [null,null,null];
     if(!game.player.passiveSlots) game.player.passiveSlots = [null,null,null];
     if(!game.player.ownedPets) game.player.ownedPets = [];
+    if(!game.player.ngLevel) game.player.ngLevel = 0;
     game.equipment = Object.assign({weapon:null,helm:null,shoulder:null,chest:null,legs:null,gloves:null,ring:null,boots:null}, data.equipment||{});
     game.inventory = data.inventory || [];
     game.inventoryMax = data.inventoryMax || 30;
