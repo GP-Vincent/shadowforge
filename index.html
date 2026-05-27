@@ -1418,10 +1418,14 @@
   /* 觸控模式下所有 modal 都用大字、大點擊區、可滾動 */
   body.touch-mode .shop-modal,
   body.touch-mode .skill-modal{
+    position:fixed !important;
+    top:50% !important;left:50% !important;
+    transform:translate(-50%,-50%) !important;
     width:94vw !important;
     max-width:94vw !important;
     height:92vh !important;
     max-height:92vh !important;
+    z-index:200 !important;
   }
   body.touch-mode .shop-modal.show,
   body.touch-mode .skill-modal.show{
@@ -1702,6 +1706,33 @@
     letter-spacing:0.05em;
   }
   .mp-stat-btn:active{background:var(--gold);color:#1a0e04;}
+
+  /* 批量出售工具列 */
+  .mp-bulk-tools{
+    display:flex;flex-wrap:wrap;gap:6px;
+    padding:8px;
+    background:rgba(0,0,0,0.4);
+    border-radius:3px;
+    margin-bottom:8px;
+  }
+  .mp-bulk-btn{
+    flex:1;min-width:60px;
+    padding:8px 6px;
+    background:rgba(28,23,21,0.9);
+    border:1px solid rgba(154,141,117,0.4);
+    color:var(--ink);
+    font-family:'Noto Serif TC',serif;
+    font-size:11px;
+    border-radius:3px;cursor:pointer;
+    letter-spacing:0.05em;
+  }
+  .mp-bulk-btn:active{background:rgba(224,168,80,0.2);}
+  .mp-bulk-btn.primary{
+    border-color:var(--gold);color:var(--gold);
+  }
+  .mp-bulk-btn.warn{
+    border-color:rgba(168,32,26,0.6);color:rgba(255,150,140,0.9);
+  }
 </style>
 </head>
 <body>
@@ -2700,6 +2731,18 @@ function resizeCanvas(){
   canvas.width = canvas.clientWidth * dpr;
   canvas.height = canvas.clientHeight * dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
+  // 重新校準角色 y 位置（如果站在平台/地面）
+  const p = game.player;
+  const groundY = getGroundY();
+  if(p.currentPlatform){
+    p.y = platformY(p.currentPlatform);
+  } else if(p.onGround){
+    p.y = groundY;
+  }
+  game.monsters.forEach(m=>{
+    if(m.onPlatform) m.y = platformY(m.onPlatform) - m.size*0.3;
+    else if(m.onGround) m.y = groundY - m.size*0.3;
+  });
 }
 window.addEventListener('resize', resizeCanvas);
 window.addEventListener('orientationchange', ()=>{
@@ -3482,30 +3525,35 @@ function generatePlatformsForSegment(segIdx, segSize){
   }
   if(startX < 600) return; // 起點區域不生
 
-  const groundY = getGroundY();
-  // 在這段 worldX 範圍內，產生 3-6 個平台
+  // 平台 y 改用「相對地面的偏移」儲存，避免螢幕 resize 後位置跑掉
   const count = 3 + Math.floor(rng()*4);
   for(let i=0;i<count;i++){
     const px = startX + 200 + rng()*(segSize-400);
-    // 高度 (相對地面往上)
-    const tier = 1 + Math.floor(rng()*3); // 1/2/3 層
-    const py = groundY - tier*80 - rng()*20;
+    const tier = 1 + Math.floor(rng()*3);
+    // 每層 80 像素間距，外加 0-20 隨機
+    const offsetY = tier*80 + rng()*20;
     const pw = 80 + rng()*140;
     game.platforms.push({
-      worldX: px, y: py, w: pw, h: 12,
+      worldX: px, offsetY: offsetY, w: pw, h: 12,
       dropThrough: true,
       tier,
     });
   }
-  // 加入幾個短梯子型小平台
+  // 短梯子型小平台
   for(let i=0;i<2;i++){
     const px = startX + rng()*segSize;
-    const py = groundY - 60 - rng()*40;
+    const offsetY = 60 + rng()*40;
     game.platforms.push({
-      worldX: px, y: py, w: 60+rng()*40, h: 10,
+      worldX: px, offsetY: offsetY, w: 60+rng()*40, h: 10,
       dropThrough: true, tier:1,
     });
   }
+}
+
+// 取得平台的當前 y (動態計算)
+function platformY(pl){
+  if(pl.offsetY !== undefined) return getGroundY() - pl.offsetY;
+  return pl.y;  // 舊存檔相容
 }
 
 function spawnMonsterNearPlayer(){
@@ -3537,7 +3585,7 @@ function spawnMonsterNearPlayer(){
     const nearbyPlats = game.platforms.filter(pl=>Math.abs(pl.worldX - worldX) < 200);
     if(nearbyPlats.length){
       const pl = choice(nearbyPlats);
-      y = pl.y - proto.size*0.3;
+      y = platformY(pl) - proto.size*0.3;
       onPlat = pl;
     }
   }
@@ -3617,10 +3665,11 @@ function updateMonsters(dt){
       landed = true;
     } else if(m.onPlatform){
       const pl = m.onPlatform;
+      const ply = platformY(pl);
       // 仍停在它的平台上
       if(m.worldX >= pl.worldX - pl.w/2 && m.worldX <= pl.worldX + pl.w/2){
-        if(m.vy >= 0 && m.y >= pl.y - m.size*0.3 && m.y <= pl.y + 20){
-          m.y = pl.y - m.size*0.3;
+        if(m.vy >= 0 && m.y >= ply - m.size*0.3 && m.y <= ply + 20){
+          m.y = ply - m.size*0.3;
           m.vy = 0;
           m.onGround = true;
           landed = true;
@@ -3856,10 +3905,11 @@ function updatePlayer(dt){
     for(const pl of game.platforms){
       const inX = Math.abs(p.worldX - pl.worldX) < pl.w/2;
       if(!inX) continue;
+      const ply = platformY(pl);
       // 上一幀在平台之上，這一幀穿過 -> 落定
       const prevY = p.y - p.vy*dt;
-      if(prevY <= pl.y && p.y >= pl.y && p.y <= pl.y + 30){
-        p.y = pl.y;
+      if(prevY <= ply && p.y >= ply && p.y <= ply + 30){
+        p.y = ply;
         p.vy = 0;
         p.onGround = true;
         p.currentPlatform = pl;
@@ -3965,6 +4015,14 @@ function detectNearbyTreasure(){
 
 function updateInteractHint(){
   const hint = $('interactHint');
+  // Modal 開啟時隱藏提示
+  const modalOpen = game.shopOpen || game.skillPanelOpen || game.relicPanelOpen
+    || game.jobSelectOpen || game.treasureChoiceOpen || game.endingShown
+    || game.startMenuOpen;
+  if(modalOpen){
+    hint.style.display = 'none';
+    return;
+  }
   if(game.nearbyTreasure){
     hint.textContent = `[F] 開啟 Boss 寶箱！`;
     hint.style.display = 'block';
@@ -4052,9 +4110,10 @@ function updateLoot(dt){
       if(!landed && L.vy > 0){
         for(const pl of game.platforms){
           if(Math.abs(L.worldX - pl.worldX) > pl.w/2) continue;
+          const ply = platformY(pl);
           const prevY = L.y - L.vy*dt;
-          if(prevY <= pl.y && L.y >= pl.y && L.y <= pl.y + 20){
-            L.y = pl.y - 5;
+          if(prevY <= ply && L.y >= ply && L.y <= ply + 20){
+            L.y = ply - 5;
             L.vy = -L.vy*0.4;
             if(Math.abs(L.vy) < 60) { L.grounded = true; L.vy=0; }
             break;
@@ -4383,7 +4442,7 @@ function drawPlatforms(){
   const w = canvas.clientWidth;
   game.platforms.forEach(pl=>{
     const sx = worldToScreenX(pl.worldX);
-    const sy = worldToScreenY(pl.y);
+    const sy = worldToScreenY(platformY(pl));
     if(sx+pl.w/2 < -50 || sx-pl.w/2 > w+50) return;
     // 平台主體 - 深色石頭風格
     const grad = ctx.createLinearGradient(0, sy, 0, sy+pl.h);
@@ -5787,6 +5846,31 @@ function sellGreyWhite(){
   if(count>0){ game.player.gold += earned; logMsg(`出售 ${count} 件 +${earned}`); updateUI(); }
   else logMsg('沒有灰白裝備');
 }
+
+function bulkSell(mode){
+  // mode: grey / white / green / greywhite / all_below_purple
+  const sellMap = {
+    grey:['grey'],
+    white:['white'],
+    green:['green'],
+    greywhite:['grey','white'],
+    all_below_purple:['grey','white','green','blue'],
+  };
+  const targetRarities = sellMap[mode];
+  if(!targetRarities) return;
+  let earned=0, count=0;
+  for(let i=game.inventory.length-1;i>=0;i--){
+    const it = game.inventory[i];
+    if(it.kind==='skillbook') continue;
+    if(targetRarities.includes(it.rarity)){
+      earned += itemSellPrice(it);
+      count++;
+      game.inventory.splice(i,1);
+    }
+  }
+  if(count>0){ game.player.gold += earned; logMsg(`批量出售 ${count} 件 +${earned}`,'good'); }
+  else logMsg('沒有符合條件的裝備');
+}
 $('sellAllBtn').onclick = sellGreyWhite;
 $('basicAttack').onclick = tryBasicAttack;
 $('potionSlot').onclick = usePotion;
@@ -6067,8 +6151,30 @@ function openMobileInventory(){
     const body = document.getElementById('mobileInvBody');
     body.innerHTML = '';
     if(tab==='inv'){
+      // 批量出售工具列
+      const tools = document.createElement('div');
+      tools.className = 'mp-bulk-tools';
+      tools.innerHTML = `
+        <button class="mp-bulk-btn" data-bulk="grey">賣灰</button>
+        <button class="mp-bulk-btn" data-bulk="white">賣白</button>
+        <button class="mp-bulk-btn" data-bulk="green">賣綠</button>
+        <button class="mp-bulk-btn primary" data-bulk="greywhite">賣灰白</button>
+        <button class="mp-bulk-btn warn" data-bulk="all_below_purple">賣灰白綠藍</button>
+      `;
+      body.appendChild(tools);
+      tools.querySelectorAll('button').forEach(b=>{
+        b.addEventListener('click',()=>{
+          bulkSell(b.dataset.bulk);
+          render(tab);
+          updateUI();
+        });
+      });
+
       if(game.inventory.length===0){
-        body.innerHTML = '<div class="mp-empty">背包是空的</div>';
+        const e = document.createElement('div');
+        e.className = 'mp-empty';
+        e.textContent = '背包是空的';
+        body.appendChild(e);
         return;
       }
       game.inventory.forEach((it,idx)=>{
