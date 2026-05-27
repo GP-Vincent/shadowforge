@@ -1174,7 +1174,10 @@
   body.touch-mode.modal-open .touch-ui{display:none;}
   body.touch-mode .controls-hint{display:none;}
   body.touch-mode .battle-log{
-    max-width:200px;font-size:9px;top:36px;
+    max-width:180px;font-size:9px;
+    top:auto; bottom:200px;  /* 移到中下方，避開 HUD */
+    left:8px;
+    max-height:90px;
   }
   /* 觸控模式下隱藏側邊欄位（手機螢幕太小） */
   body.touch-mode.compact #app{
@@ -1198,6 +1201,48 @@
   body.touch-mode.compact .stat-pill{font-size:9px;padding:2px 6px;}
   body.touch-mode.compact .stat-pill .label{display:none;}
   body.touch-mode.compact .logo{font-size:14px;}
+
+  /* 漂浮 HUD - 左上角顯示 HP/MP/XP */
+  .touch-hud{
+    position:absolute;
+    top:46px; left:8px;
+    width:200px;
+    background:rgba(8,5,5,0.75);
+    border:1px solid rgba(224,168,80,0.3);
+    border-radius:4px;
+    padding:6px 8px;
+    pointer-events:none;
+    box-shadow:0 2px 8px rgba(0,0,0,0.6);
+  }
+  .th-row{
+    display:flex;align-items:center;gap:5px;
+    margin:2px 0;
+    font-size:9px;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .th-label{
+    width:18px;color:var(--ink-dim);font-weight:bold;
+    letter-spacing:0.05em;
+  }
+  .th-bar{
+    flex:1;height:8px;
+    background:rgba(0,0,0,0.6);
+    border:1px solid rgba(224,168,80,0.2);
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .th-fill{
+    height:100%;
+    transition:width 0.2s ease;
+  }
+  .th-fill.hp{background:linear-gradient(90deg,#a8201a,#d83828);}
+  .th-fill.mp{background:linear-gradient(90deg,#2860a0,#4a7fb8);}
+  .th-fill.xp{background:linear-gradient(90deg,#a06820,#e0a850);}
+  .th-val{
+    color:var(--ink);font-size:8px;
+    min-width:48px;text-align:right;
+    letter-spacing:0.02em;
+  }
 
   .touch-btn{
     position:absolute;
@@ -1244,15 +1289,15 @@
 
   /* 跳躍 - 搖桿右上 */
   .touch-jump{
-    left:160px;bottom:90px;
-    width:68px;height:68px;
-    font-size:30px;
+    left:155px;bottom:80px;
+    width:64px;height:64px;
+    font-size:28px;
     color:#80c0ff;
     border-color:rgba(128,192,255,0.5);
   }
-  /* 下穿平台 - 搖桿右側 */
+  /* 衝刺 - 跳躍右側 */
   .touch-down{
-    left:160px;bottom:18px;
+    left:155px;bottom:14px;
     width:54px;height:54px;
     font-size:22px;
     color:var(--ink-dim);
@@ -1261,25 +1306,26 @@
 
   /* 攻擊 - 右下角大鈕 */
   .touch-attack{
-    right:24px;bottom:24px;
-    width:96px;height:96px;
-    font-size:42px;
+    right:18px;bottom:18px;
+    width:88px;height:88px;
+    font-size:36px;
     color:var(--blood);
     border-color:rgba(168,32,26,0.7);
     border-width:3px;
   }
-  /* 3 技能環繞攻擊 */
+  /* 3 技能 - 水平排列在攻擊鈕上方，跟攻擊鈕對齊 */
   .touch-skill{
-    width:62px;height:62px;
+    width:56px;height:56px;
     font-size:14px;
     flex-direction:column;gap:0;
     border-color:rgba(160,96,208,0.6);
   }
-  .ts-icon{font-size:24px;line-height:1;}
+  .ts-icon{font-size:22px;line-height:1;}
   .ts-label{font-size:8px;color:var(--ink-dim);letter-spacing:0.1em;}
-  .touch-skill-x{right:130px;bottom:78px;}
-  .touch-skill-c{right:78px;bottom:130px;}
-  .touch-skill-v{right:24px;bottom:130px;}
+  /* X / C / V 在攻擊鈕正上方水平排（三顆寬度等於攻擊鈕） */
+  .touch-skill-x{right:18px; bottom:114px;}
+  .touch-skill-c{right:78px; bottom:114px;}
+  .touch-skill-v{right:138px;bottom:114px;}
   .touch-skill.cooldown{
     opacity:0.4;
     border-color:rgba(80,80,80,0.5);
@@ -1289,21 +1335,23 @@
     border-color:rgba(80,80,80,0.4);
   }
 
-  /* 互動 + 藥水 - 攻擊鍵左側 */
+  /* F 互動 - 攻擊鈕正左 */
   .touch-action{
-    right:148px;bottom:24px;
-    width:60px;height:60px;
+    right:118px;bottom:18px;
+    width:62px;height:62px;
     font-size:22px;
     color:var(--gold);
   }
+  /* 藥水 - F 上方更高，避開技能列 */
   .touch-potion-btn{
-    right:148px;bottom:90px;
+    right:200px;bottom:18px;
     width:54px;height:54px;
     font-size:24px;
     border-color:rgba(168,32,26,0.5);
   }
+  /* 衝刺 - 移到搖桿左上 */
   .touch-dash{
-    right:208px;bottom:54px;
+    left:14px;bottom:155px;
     width:50px;height:50px;
     font-size:22px;
     color:#ffd060;
@@ -1494,10 +1542,30 @@
     padding:14px;font-size:13px;
   }
 
-  /* 互動 hint - 大字 */
+  /* 互動 hint - 大字，移到頂部避開觸控鈕 */
   body.touch-mode .interact-hint{
-    font-size:14px;padding:10px 16px;
-    bottom:200px;  /* 避開觸控鈕 */
+    font-size:13px;padding:8px 14px;
+    bottom:auto;
+    top:120px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(8,5,5,0.92);
+    border:1px solid var(--gold);
+    border-radius:4px;
+    z-index:60;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  /* 區域資訊面板 - 觸控模式縮小 */
+  body.touch-mode .area-info{
+    top:46px;
+    right:64px;  /* 避開 menu button */
+    font-size:9px;
+    padding:4px 8px;
+  }
+  body.touch-mode .area-info .dist,
+  body.touch-mode .area-info .threat{
+    font-size:8px;
   }
 
   /* 一定要可滾動的 modal */
@@ -1688,6 +1756,25 @@
 
     <!-- ========== TOUCH UI ========== -->
     <div class="touch-ui" id="touchUI">
+      <!-- 漂浮 HUD (左上) -->
+      <div class="touch-hud" id="touchHud">
+        <div class="th-row">
+          <span class="th-label">HP</span>
+          <div class="th-bar"><div class="th-fill hp" id="thHp" style="width:100%"></div></div>
+          <span class="th-val" id="thHpVal">100/100</span>
+        </div>
+        <div class="th-row">
+          <span class="th-label">MP</span>
+          <div class="th-bar"><div class="th-fill mp" id="thMp" style="width:100%"></div></div>
+          <span class="th-val" id="thMpVal">50/50</span>
+        </div>
+        <div class="th-row">
+          <span class="th-label">XP</span>
+          <div class="th-bar"><div class="th-fill xp" id="thXp" style="width:0%"></div></div>
+          <span class="th-val" id="thLv">Lv.1</span>
+        </div>
+      </div>
+
       <!-- 虛擬搖桿 (左下) -->
       <div class="touch-joystick" id="touchJoystick">
         <div class="touch-joystick-knob" id="touchKnob"></div>
@@ -5441,6 +5528,15 @@ function updateUI(){
   $('hpBar').style.width = (p.hp/d.hpMax*100)+'%';
   $('mpBar').style.width = (p.mp/d.mpMax*100)+'%';
   $('xpBar').style.width = (p.xp/xpNeeded(p.lv)*100)+'%';
+  // 觸控 HUD 同步
+  if(document.getElementById('thHp')){
+    $('thHp').style.width = (p.hp/d.hpMax*100)+'%';
+    $('thMp').style.width = (p.mp/d.mpMax*100)+'%';
+    $('thXp').style.width = (p.xp/xpNeeded(p.lv)*100)+'%';
+    $('thHpVal').textContent = `${p.hp}/${d.hpMax}`;
+    $('thMpVal').textContent = `${p.mp}/${d.mpMax}`;
+    $('thLv').textContent = `Lv.${p.lv}`;
+  }
   $('hKills').textContent = p.kills;
   $('hGold').textContent = p.gold;
   $('hDrop').textContent = Math.floor(d.dropRate*100)+'%';
@@ -6175,7 +6271,20 @@ function loop(t){
   render();
   updateCooldownUI();
   updateTouchSkillIcons();
+  updateTouchHud();
   requestAnimationFrame(loop);
+}
+
+function updateTouchHud(){
+  if(!document.body.classList.contains('touch-mode')) return;
+  const el = document.getElementById('thHp');
+  if(!el) return;
+  const p = game.player;
+  const d = getDerived();
+  document.getElementById('thHp').style.width = (p.hp/d.hpMax*100)+'%';
+  document.getElementById('thMp').style.width = (p.mp/d.mpMax*100)+'%';
+  document.getElementById('thHpVal').textContent = `${p.hp}/${d.hpMax}`;
+  document.getElementById('thMpVal').textContent = `${p.mp}/${d.mpMax}`;
 }
 
 /* ============================================================
