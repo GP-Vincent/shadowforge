@@ -1716,6 +1716,12 @@
     letter-spacing:0.05em;
   }
   .mp-stat-btn:active{background:var(--gold);color:#1a0e04;}
+  .mp-stat-btn.mp-stat-all{
+    grid-column:1 / -1;
+    background:linear-gradient(180deg, rgba(168,32,26,0.3), rgba(217,122,44,0.2));
+    border-color:var(--ember);
+    color:var(--gold);
+  }
 
   /* 批量出售工具列 */
   .mp-bulk-tools{
@@ -3061,7 +3067,7 @@ function getDerived(){
     critChance: Math.min(0.85, 0.05 + s.dex*0.01 + (mods.critBonus||0)),
     critDmg: 1.5 + s.dex*0.02 + (mods.critDmgBonus||0),
     dodge: Math.min(0.6, s.dex*0.005 + (mods.dodgeBonus||0)),
-    dropRate: Math.min(0.98, 0.15 + s.lck*0.015 + luckBuff*0.01 + (mods.dropBonus||0)),
+    dropRate: Math.min(0.98, 0.15 + s.lck*0.0025 + luckBuff*0.01 + (mods.dropBonus||0)),
     luckRarity: s.lck + (p.buffs.luck?10:0),
     armorReduce: ((s.armor + s.def*2)*(mods.armorMult||1))/(((s.armor + s.def*2)*(mods.armorMult||1))+100),
     moveSpeed: (200 + s.dex*1.5) * (mods.speedMult||1),
@@ -6677,18 +6683,14 @@ function equipFromInventory(idx){
 function openMobileCharInfo(){
   closeMobilePanels();
   const p = game.player;
-  const d = getDerived();
   const overlay = document.createElement('div');
   overlay.id = 'mobileCharOverlay';
   overlay.className = 'mobile-panel-overlay';
   const jobInfo = p.job && JOBS[p.job] ? `${JOBS[p.job].icon} ${JOBS[p.job].name}` : '無職業';
-  overlay.innerHTML = `
-    <div class="mobile-panel">
-      <div class="mobile-panel-header">
-        <span>角色資訊</span>
-        <button class="mobile-panel-close">✕</button>
-      </div>
-      <div class="mobile-panel-body">
+  const renderBody = ()=>{
+    const d = getDerived();
+    return `
+      <div class="mobile-panel-body" id="charBody">
         <div class="mp-char">
           <div class="mp-char-row"><span>職業</span><span>${jobInfo}</span></div>
           <div class="mp-char-row"><span>等級</span><span>Lv. ${p.lv}</span></div>
@@ -6703,42 +6705,90 @@ function openMobileCharInfo(){
         </div>
         <div class="mp-section-title">屬性</div>
         <div class="mp-char">
-          ${Object.entries(STATS).map(([k,s])=>`<div class="mp-char-row"><span>${s.icon} ${s.name}</span><span>${p[k]}</span></div>`).join('')}
+          ${Object.entries(STATS).map(([k,s])=>`<div class="mp-char-row"><span>${s.icon} ${s.name}</span><span id="statVal_${k}">${p[k]}</span></div>`).join('')}
         </div>
         <div class="mp-section-title">戰鬥屬性</div>
         <div class="mp-char">
-          <div class="mp-char-row"><span>物攻</span><span>${d.atk}</span></div>
-          <div class="mp-char-row"><span>魔攻</span><span>${d.magic}</span></div>
-          <div class="mp-char-row"><span>暴擊率</span><span>${(d.critChance*100).toFixed(1)}%</span></div>
-          <div class="mp-char-row"><span>暴擊傷害</span><span>${(d.critDmg*100).toFixed(0)}%</span></div>
-          <div class="mp-char-row"><span>閃避率</span><span>${(d.dodge*100).toFixed(1)}%</span></div>
-          <div class="mp-char-row"><span>掉寶率</span><span>${(d.dropRate*100).toFixed(0)}%</span></div>
-          <div class="mp-char-row"><span>護甲減傷</span><span>${(d.armorReduce*100).toFixed(1)}%</span></div>
+          <div class="mp-char-row"><span>物攻</span><span id="dv_atk">${d.atk}</span></div>
+          <div class="mp-char-row"><span>魔攻</span><span id="dv_magic">${d.magic}</span></div>
+          <div class="mp-char-row"><span>暴擊率</span><span id="dv_crit">${(d.critChance*100).toFixed(1)}%</span></div>
+          <div class="mp-char-row"><span>暴擊傷害</span><span id="dv_critdmg">${(d.critDmg*100).toFixed(0)}%</span></div>
+          <div class="mp-char-row"><span>閃避率</span><span id="dv_dodge">${(d.dodge*100).toFixed(1)}%</span></div>
+          <div class="mp-char-row"><span>掉寶率</span><span id="dv_drop">${(d.dropRate*100).toFixed(1)}%</span></div>
+          <div class="mp-char-row"><span>護甲減傷</span><span id="dv_armor">${(d.armorReduce*100).toFixed(1)}%</span></div>
         </div>
-        ${p.statPoints>0 ? `
-        <div class="mp-section-title">分配屬性點（剩餘 ${p.statPoints}）</div>
-        <div class="mp-stat-buttons">
+        <div class="mp-section-title" id="statPointTitle" style="${p.statPoints>0?'':'display:none'}">分配屬性點（剩餘 <span id="statPointsLeft">${p.statPoints}</span>）</div>
+        <div class="mp-stat-buttons" id="statBtnGrid" style="${p.statPoints>0?'':'display:none'}">
           ${Object.entries(STATS).map(([k,s])=>`<button class="mp-stat-btn" data-stat="${k}">${s.icon} ${s.name} +1</button>`).join('')}
-        </div>` : ''}
+          <button class="mp-stat-btn mp-stat-all" data-stat="all">全部分配（平均）</button>
+        </div>
       </div>
+    `;
+  };
+  overlay.innerHTML = `
+    <div class="mobile-panel">
+      <div class="mobile-panel-header">
+        <span>角色資訊</span>
+        <button class="mobile-panel-close">✕</button>
+      </div>
+      ${renderBody()}
     </div>
   `;
   document.body.appendChild(overlay);
   game.startMenuOpen = true;
+
+  // 局部更新函式
+  const refreshNumbers = ()=>{
+    const d2 = getDerived();
+    Object.keys(STATS).forEach(k=>{
+      const el = document.getElementById('statVal_'+k);
+      if(el) el.textContent = p[k];
+    });
+    const set = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+    set('dv_atk', d2.atk);
+    set('dv_magic', d2.magic);
+    set('dv_crit', (d2.critChance*100).toFixed(1)+'%');
+    set('dv_critdmg', (d2.critDmg*100).toFixed(0)+'%');
+    set('dv_dodge', (d2.dodge*100).toFixed(1)+'%');
+    set('dv_drop', (d2.dropRate*100).toFixed(1)+'%');
+    set('dv_armor', (d2.armorReduce*100).toFixed(1)+'%');
+    set('statPointsLeft', p.statPoints);
+    if(p.statPoints<=0){
+      const t = document.getElementById('statPointTitle');
+      const g = document.getElementById('statBtnGrid');
+      if(t) t.style.display = 'none';
+      if(g) g.style.display = 'none';
+    }
+  };
+
   overlay.querySelector('.mobile-panel-close').addEventListener('click',()=>{
     overlay.remove();
     game.startMenuOpen = false;
   });
-  overlay.querySelectorAll('.mp-stat-btn').forEach(b=>{
-    b.addEventListener('click',()=>{
+
+  // 使用事件代理 - 按鈕 click 不會重建面板
+  overlay.addEventListener('click',(e)=>{
+    const btn = e.target.closest('.mp-stat-btn');
+    if(!btn) return;
+    const stat = btn.dataset.stat;
+    if(stat==='all'){
+      // 平均分配
+      const statKeys = Object.keys(STATS);
+      while(p.statPoints>0){
+        for(const k of statKeys){
+          if(p.statPoints<=0) break;
+          p[k]++;
+          p.statPoints--;
+        }
+      }
+    } else {
       if(p.statPoints<=0) return;
-      p[b.dataset.stat]++;
+      p[stat]++;
       p.statPoints--;
-      overlay.remove();
-      game.startMenuOpen = false;
-      openMobileCharInfo();
-      updateUI();
-    });
+    }
+    refreshNumbers();
+    updateUI();
+    saveGame();
   });
 }
 
